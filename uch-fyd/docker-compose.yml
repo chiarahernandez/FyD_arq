@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: uchfyd
+    ports: ["3306:3306"]
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 10
+
+  mongo:
+    image: mongo:7
+    ports: ["27017:27017"]
+
+  consul:
+    image: hashicorp/consul:1.19
+    ports: ["8500:8500"]
+    command: "agent -server -ui -bootstrap-expect=1 -client=0.0.0.0"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports: ["5672:5672", "15672:15672"]
+
+  auth:
+    build: ./auth
+    environment:
+      MONGO_URL: mongodb://mongo:27017/usuarios
+      JWT_SECRET: supersecreto
+      CONSUL_HOST: consul
+    depends_on: [mongo, consul]
+    ports: ["3001:3001"]
+
+  catalogo:
+    build: ./catalogo
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASS: root
+      DB_NAME: uchfyd
+      RABBITMQ_URL: amqp://rabbitmq
+      CONSUL_HOST: consul
+    depends_on:
+      mysql: { condition: service_healthy }
+      rabbitmq: { condition: service_started }
+      consul: { condition: service_started }
+    ports: ["3002:3002"]
+
+  stock:
+    build: ./stock
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASS: root
+      DB_NAME: uchfyd
+      RABBITMQ_URL: amqp://rabbitmq
+      CONSUL_HOST: consul
+    depends_on:
+      mysql: { condition: service_healthy }
+      rabbitmq: { condition: service_started }
+      consul: { condition: service_started }
+    ports: ["3003:3003"]
+
+  pool:
+    build: ./pool
+    environment:
+      CONSUL_HOST: consul
+    depends_on: [consul]
+    ports: ["3005:3005"]
+
+  pedidos:
+    build: ./pedidos
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASS: root
+      DB_NAME: uchfyd
+      CONSUL_HOST: consul
+    depends_on:
+      mysql: { condition: service_healthy }
+      consul: { condition: service_started }
+      pool: { condition: service_started }
+    ports: ["3004:3004"]
+
+  gateway:
+    build: ./gateway
+    environment:
+      JWT_SECRET: supersecreto
+      CONSUL_HOST: consul
+    depends_on: [consul, auth, pedidos, catalogo, stock]
+    ports: ["3000:3000"]
