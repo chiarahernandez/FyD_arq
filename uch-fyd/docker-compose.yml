@@ -4,7 +4,7 @@ x-aiven-env: &aiven-env
   DB_USER: "${DB_USER:?Falta DB_USER en .env}"
   DB_PASS: "${DB_PASS:?Falta DB_PASS en .env}"
   DB_NAME: uchfyd
-  DB_CA_PATH: /run/certs/aiven-ca.pem
+  DB_CA_PATH: /run/certs/aiven-mysql-ca.pem
 
 services:
   mongo:
@@ -36,7 +36,7 @@ services:
       RABBITMQ_URL: amqp://rabbitmq
       CONSUL_HOST: consul
     volumes:
-      - ./certs/aiven-ca.pem:/run/certs/aiven-ca.pem:ro
+       - ./certs:/run/certs:ro   
     depends_on:
       rabbitmq: { condition: service_started }
       consul: { condition: service_started }
