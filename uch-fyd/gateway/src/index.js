@@ -28,12 +28,20 @@ app.use("/auth", createProxyMiddleware({ target: "http://auth:3001", changeOrigi
 
 app.use("/pedidos", validarJWT, async (req, res, next) => {
   const target = await resolverInstancia("pedidos");
-  createProxyMiddleware({ target, changeOrigin: true })(req, res, next);
+  createProxyMiddleware({ 
+    target, 
+    changeOrigin: true,
+    pathRewrite: { '^/pedidos': '/pedidos' } // Esto asegura que la ruta llegue intacta al microservicio
+  })(req, res, next);
 });
 
 app.use("/catalogo", validarJWT, async (req, res, next) => {
   const target = await resolverInstancia("catalogo");
-  createProxyMiddleware({ target, changeOrigin: true })(req, res, next);
+  createProxyMiddleware({ 
+    target, 
+    changeOrigin: true,
+    pathRewrite: { '^/catalogo': '/catalogo' } // Esto asegura que la ruta llegue intacta al microservicio
+  })(req, res, next);
 });
 
 app.listen(3000, () => console.log("gateway en 3000"));
