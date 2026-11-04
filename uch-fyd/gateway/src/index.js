@@ -31,7 +31,7 @@ app.use("/pedidos", validarJWT, async (req, res, next) => {
   createProxyMiddleware({ 
     target, 
     changeOrigin: true,
-    pathRewrite: { '^/pedidos': '/pedidos' } // Esto asegura que la ruta llegue intacta al microservicio
+    pathRewrite: { '^/': '/pedidos' } // Esto asegura que la ruta llegue intacta al microservicio
   })(req, res, next);
 });
 
@@ -40,7 +40,6 @@ app.use("/catalogo", validarJWT, async (req, res, next) => {
   createProxyMiddleware({ 
     target, 
     changeOrigin: true,
-    pathRewrite: { '^/catalogo': '/catalogo' } // Esto asegura que la ruta llegue intacta al microservicio
   })(req, res, next);
 });
 

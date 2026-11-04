@@ -68,7 +68,7 @@ services:
       <<: *aiven-env
       CONSUL_HOST: consul
     volumes:
-      - ./certs/aiven-ca.pem:/run/certs/aiven-ca.pem:ro
+      - ./certs:/run/certs:ro
     depends_on:
       consul: { condition: service_started }
       pool: { condition: service_started }

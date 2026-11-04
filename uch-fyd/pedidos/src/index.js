@@ -2,6 +2,7 @@ const express = require("express");
 const mysql = require("mysql2/promise");
 const axios = require("axios");
 const Consul = require("consul");
+const fs = require("node:fs");
 
 const app = express();
 app.use(express.json());
@@ -45,15 +46,31 @@ app.post("/pedidos", async (req, res) => {
       throw errInsert;
     }
   } catch (e) {
+    console.error("Error en Pedidos:", e); // Esto te va a salvar la vida si vuelve a fallar
     res.status(500).json({ error: "error interno" });
   }
 });
 
 (async () => {
-  pool = await mysql.createPool({ host: process.env.DB_HOST, user: process.env.DB_USER, password: process.env.DB_PASS, database: process.env.DB_NAME });
+  const port = Number(process.env.DB_PORT);
+  
+  pool = await mysql.createPool({ 
+    host: process.env.DB_HOST, 
+    port,
+    user: process.env.DB_USER, 
+    password: process.env.DB_PASS, 
+    database: process.env.DB_NAME,
+    ssl: {
+      ca: fs.readFileSync(process.env.DB_CA_PATH, "utf8"),
+      rejectUnauthorized: true,
+      verifyIdentity: true,
+    }
+  });
+  
   consul = new Consul({ host: process.env.CONSUL_HOST });
   app.listen(3004, () => {
     consul.agent.service.register({ name: "pedidos", address: "pedidos", port: 3004 });
+    console.log("Pedidos escuchando en 3004");
   });
 })();
 
