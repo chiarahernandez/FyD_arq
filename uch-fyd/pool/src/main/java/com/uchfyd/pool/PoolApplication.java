@@ -1,4 +1,3 @@
-```java
 package com.uchfyd.pool;
 
 import org.springframework.boot.SpringApplication;
