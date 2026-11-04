@@ -1,19 +1,12 @@
-version: "3.8"
+x-aiven-env: &aiven-env
+  DB_HOST: "${DB_HOST:?Falta DB_HOST en .env}"
+  DB_PORT: "${DB_PORT:?Falta DB_PORT en .env}"
+  DB_USER: "${DB_USER:?Falta DB_USER en .env}"
+  DB_PASS: "${DB_PASS:?Falta DB_PASS en .env}"
+  DB_NAME: uchfyd
+  DB_CA_PATH: /run/certs/aiven-ca.pem
 
 services:
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: uchfyd
-    ports: ["3306:3306"]
-    volumes:
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
-      retries: 10
-
   mongo:
     image: mongo:7
     ports: ["27017:27017"]
@@ -39,14 +32,12 @@ services:
   catalogo:
     build: ./catalogo
     environment:
-      DB_HOST: mysql
-      DB_USER: root
-      DB_PASS: root
-      DB_NAME: uchfyd
+      <<: *aiven-env
       RABBITMQ_URL: amqp://rabbitmq
       CONSUL_HOST: consul
+    volumes:
+      - ./certs/aiven-ca.pem:/run/certs/aiven-ca.pem:ro
     depends_on:
-      mysql: { condition: service_healthy }
       rabbitmq: { condition: service_started }
       consul: { condition: service_started }
     ports: ["3002:3002"]
@@ -54,14 +45,12 @@ services:
   stock:
     build: ./stock
     environment:
-      DB_HOST: mysql
-      DB_USER: root
-      DB_PASS: root
-      DB_NAME: uchfyd
+      <<: *aiven-env
       RABBITMQ_URL: amqp://rabbitmq
       CONSUL_HOST: consul
+    volumes:
+      - ./certs/aiven-ca.pem:/run/certs/aiven-ca.pem:ro
     depends_on:
-      mysql: { condition: service_healthy }
       rabbitmq: { condition: service_started }
       consul: { condition: service_started }
     ports: ["3003:3003"]
@@ -76,13 +65,11 @@ services:
   pedidos:
     build: ./pedidos
     environment:
-      DB_HOST: mysql
-      DB_USER: root
-      DB_PASS: root
-      DB_NAME: uchfyd
+      <<: *aiven-env
       CONSUL_HOST: consul
+    volumes:
+      - ./certs/aiven-ca.pem:/run/certs/aiven-ca.pem:ro
     depends_on:
-      mysql: { condition: service_healthy }
       consul: { condition: service_started }
       pool: { condition: service_started }
     ports: ["3004:3004"]
