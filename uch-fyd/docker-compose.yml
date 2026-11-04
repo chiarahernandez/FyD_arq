@@ -23,7 +23,7 @@ services:
   auth:
     build: ./auth
     environment:
-      MONGO_URL: mongodb://mongo:27017/usuarios
+      MONGO_URL: ${MONGO_URL:?Falta MONGO_URL en .env}
       JWT_SECRET: supersecreto
       CONSUL_HOST: consul
     depends_on: [mongo, consul]
