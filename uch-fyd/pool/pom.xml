@@ -3,12 +3,14 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.3.0</version>
+    <version>3.5.7</version>
   </parent>
   <groupId>com.uchfyd</groupId>
   <artifactId>pool</artifactId>
   <version>1.0.0</version>
-  <properties><java.version>17</java.version></properties>
+  <properties>
+    <java.version>25</java.version>
+  </properties>
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
