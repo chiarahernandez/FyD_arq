@@ -1,0 +1,1 @@
+router.patch("/usuarios/:id/activar", adminController.activar);
