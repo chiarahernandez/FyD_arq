@@ -19,6 +19,12 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     ports: ["5673:5672", "15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
 
   auth:
     build: ./auth
