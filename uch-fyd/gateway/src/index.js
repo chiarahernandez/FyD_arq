@@ -4,10 +4,18 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const Consul = require("consul");
+const cors = require("cors"); // NUEVO
 
 const app = express();
 app.use(cors({ origin: "http://localhost:5173", methods: ["GET", "POST"], allowedHeaders: ["Content-Type", "Authorization"] }));
 const consul = new Consul({ host: process.env.CONSUL_HOST });
+
+// NUEVO: configurar CORS antes de las rutas
+app.use(cors({
+  origin: "http://localhost:5173",
+  methods: ["GET", "POST", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
 async function resolverInstancia(nombreServicio) {
   const servicios = await consul.health.service({ service: nombreServicio, passing: true });

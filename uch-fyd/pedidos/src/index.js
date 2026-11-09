@@ -1,77 +1,93 @@
+
 const express = require("express");
-const mysql = require("mysql2/promise");
 const axios = require("axios");
-const Consul = require("consul");
-const fs = require("node:fs");
+
+// Configuración
+const { crearPool } = require("./config/db");
+const { registrarServicio } = require("./config/consul");
+
+// Capas de la arquitectura
+const { crearPedidoRepository } = require("./repositories/pedido.repository");
+const { crearPedidosService } = require("./services/pedidos.service");
+const { crearPedidosController } = require("./controllers/pedidos.controller");
+const { crearPedidosRoutes } = require("./routes/pedidos.routes");
+
+// Manejo de errores
+const errorHandler = require("./middlewares/errorHandler");
 
 const app = express();
 app.use(express.json());
-let pool, consul;
 
+let consul;
+
+// Descubrir microservicios mediante Consul
 async function resolverInstancia(nombreServicio) {
-  const servicios = await consul.health.service({ service: nombreServicio, passing: true });
+  const servicios = await consul.health.service({
+    service: nombreServicio,
+    passing: true
+  });
+
+  if (!servicios || servicios.length === 0) {
+    throw new Error(
+      `No hay instancias disponibles de ${nombreServicio}`
+    );
+  }
+
   const s = servicios[0].Service;
   return `http://${s.Address}:${s.Port}`;
 }
 
-app.post("/pedidos", async (req, res) => {
-  const { usuarioId, articuloId, cantidad } = req.body;
-
-  try {
-    const urlPool = await resolverInstancia("pool");
-    const resPool = await axios.post(`${urlPool}/pool/ejecutar`, { tareaId: `${usuarioId}-${Date.now()}` });
-    if (resPool.data.estado !== "aceptada") {
-      return res.status(503).json({ error: "sistema temporalmente ocupado" });
-    }
-
-    const urlCatalogo = await resolverInstancia("catalogo");
-    const { data: { precio } } = await axios.get(`${urlCatalogo}/articulos/${articuloId}/precio`);
-
-    const urlStock = await resolverInstancia("stock");
-    const resStock = await axios.post(`${urlStock}/stock/reservar`, { articuloId, cantidad }, { validateStatus: () => true });
-
-    if (resStock.status === 409) {
-      return res.status(409).json({ error: "stock insuficiente" });
-    }
-
-    try {
-      const [ins] = await pool.query(
-        "INSERT INTO pedidos (usuario_id, articulo_id, cantidad, precio_historico) VALUES (?, ?, ?, ?)",
-        [usuarioId, articuloId, cantidad, precio]
-      );
-      res.status(201).json({ pedidoId: ins.insertId });
-    } catch (errInsert) {
-      // compensación: la reserva de stock ya se hizo, pero el pedido no se concretó
-      await axios.post(`${urlStock}/stock/${articuloId}/liberar`, { cantidad });
-      throw errInsert;
-    }
-  } catch (e) {
-    console.error("Error en Pedidos:", e); // Esto te va a salvar la vida si vuelve a fallar
-    res.status(500).json({ error: "error interno" });
-  }
+// Endpoint de salud
+app.get("/health", (_, res) => {
+  res.sendStatus(200);
 });
 
-(async () => {
-  const port = Number(process.env.DB_PORT);
-  
-  pool = await mysql.createPool({ 
-    host: process.env.DB_HOST, 
-    port,
-    user: process.env.DB_USER, 
-    password: process.env.DB_PASS, 
-    database: process.env.DB_NAME,
-    ssl: {
-      ca: fs.readFileSync(process.env.DB_CA_PATH, "utf8"),
-      rejectUnauthorized: true,
-      verifyIdentity: true,
-    }
-  });
-  
-  consul = new Consul({ host: process.env.CONSUL_HOST });
-  app.listen(3004, () => {
-    consul.agent.service.register({ name: "pedidos", address: "pedidos", port: 3004 });
-    console.log("Pedidos escuchando en 3004");
-  });
-})();
+// Inicializar el microservicio
+async function iniciar() {
+  try {
+    // 1. Conexión a MySQL
+    const pool = crearPool();
+    await pool.query("SELECT 1");
 
-app.get("/health", (_, res) => res.sendStatus(200));
+    console.log("Conexión a MySQL en Aiven verificada");
+
+    // 2. Repository
+    const repo = crearPedidoRepository(pool);
+
+    // 3. Service
+    const service = crearPedidosService({
+      repo,
+      resolverInstancia,
+      http: axios
+    });
+
+    // 4. Controller
+    const controller = crearPedidosController(service);
+
+    // 5. Routes
+    app.use(crearPedidosRoutes(controller));
+
+    // 6. Middleware de errores
+    app.use(errorHandler);
+
+    // 7. Iniciar servidor y registrar en Consul
+    app.listen(3004, () => {
+      consul = registrarServicio({
+        nombre: "pedidos",
+        puerto: 3004
+      });
+
+      console.log("Pedidos escuchando en 3004");
+    });
+
+  } catch (error) {
+    console.error(
+      "No se pudo iniciar Pedidos:",
+      error.message
+    );
+
+    process.exit(1);
+  }
+}
+
+iniciar();
