@@ -4,7 +4,7 @@ x-aiven-env: &aiven-env
   DB_USER: "${DB_USER:?Falta DB_USER en .env}"
   DB_PASS: "${DB_PASS:?Falta DB_PASS en .env}"
   DB_NAME: uchfyd
-  DB_CA_PATH: /run/certs/aiven-mysql-ca.pem
+  DB_CA_PATH: /run/certs/aiven-ca.pem
 
 services:
   mongo:
@@ -18,12 +18,18 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management
-    ports: ["5673:5672", "15672:15672"]
+    ports: ["5672:5672", "15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
 
   auth:
     build: ./auth
     environment:
-      MONGO_URL: ${MONGO_URL:?Falta MONGO_URL en .env}
+      MONGO_URL: "${MONGO_URL:?Falta MONGO_URL en .env}"
       JWT_SECRET: supersecreto
       CONSUL_HOST: consul
     depends_on: [mongo, consul]
@@ -36,9 +42,9 @@ services:
       RABBITMQ_URL: amqp://rabbitmq
       CONSUL_HOST: consul
     volumes:
-      - ./certs:/run/certs:ro   
+      - ./certs:/run/certs:ro
     depends_on:
-      rabbitmq: { condition: service_started }
+      rabbitmq: { condition: service_healthy }
       consul: { condition: service_started }
     ports: ["3002:3002"]
 
@@ -51,7 +57,7 @@ services:
     volumes:
       - ./certs:/run/certs:ro
     depends_on:
-      rabbitmq: { condition: service_started }
+      rabbitmq: { condition: service_healthy }
       consul: { condition: service_started }
     ports: ["3003:3003"]
 

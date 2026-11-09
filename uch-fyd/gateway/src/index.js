@@ -1,10 +1,12 @@
 
 const express = require("express");
+const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const Consul = require("consul");
 
 const app = express();
+app.use(cors({ origin: "http://localhost:5173", methods: ["GET", "POST"], allowedHeaders: ["Content-Type", "Authorization"] }));
 const consul = new Consul({ host: process.env.CONSUL_HOST });
 
 async function resolverInstancia(nombreServicio) {
