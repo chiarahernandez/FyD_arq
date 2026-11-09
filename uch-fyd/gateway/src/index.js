@@ -1,14 +1,15 @@
 
 const express = require("express");
-const jwt = require("jsonwebtoken");
-const { createProxyMiddleware } = require("http-proxy-middleware");
 const Consul = require("consul");
-const cors = require("cors"); // NUEVO
+const cors = require("cors");
+const authRoutes = require("./routes/auth.routes");
+const { crearCatalogoProxy } = require("./routes/catalogo.routes");
+const { crearPedidosProxy } = require("./routes/pedidos.routes");
+const validarJWT = require("./middlewares/validarJWT");
 
 const app = express();
 const consul = new Consul({ host: process.env.CONSUL_HOST });
 
-// NUEVO: configurar CORS antes de las rutas
 app.use(cors({
   origin: "http://localhost:5173",
   methods: ["GET", "POST", "PATCH"],
@@ -17,38 +18,22 @@ app.use(cors({
 
 async function resolverInstancia(nombreServicio) {
   const servicios = await consul.health.service({ service: nombreServicio, passing: true });
-  const s = servicios[0].Service;
-  return `http://${s.Address}:${s.Port}`;
-}
+  const instancia = servicios[0];
 
-function validarJWT(req, res, next) {
-  const auth = req.headers.authorization;
-  if (!auth) return res.sendStatus(401);
-  try {
-    req.usuario = jwt.verify(auth.replace("Bearer ", ""), process.env.JWT_SECRET);
-    next();
-  } catch {
-    res.sendStatus(401);
+  if (!instancia) {
+    throw new Error(`No hay instancias disponibles para el servicio "${nombreServicio}"`);
   }
+
+  const { Address, Port } = instancia.Service;
+  if (!Address || !Port) {
+    throw new Error(`La instancia de "${nombreServicio}" no tiene dirección o puerto`);
+  }
+
+  return `http://${Address}:${Port}`;
 }
 
-app.use("/auth", createProxyMiddleware({ target: "http://auth:3001", changeOrigin: true }));
-
-app.use("/pedidos", validarJWT, async (req, res, next) => {
-  const target = await resolverInstancia("pedidos");
-  createProxyMiddleware({ 
-    target, 
-    changeOrigin: true,
-    pathRewrite: { '^/': '/pedidos' } // Esto asegura que la ruta llegue intacta al microservicio
-  })(req, res, next);
-});
-
-app.use("/catalogo", validarJWT, async (req, res, next) => {
-  const target = await resolverInstancia("catalogo");
-  createProxyMiddleware({ 
-    target, 
-    changeOrigin: true,
-  })(req, res, next);
-});
+app.use("/auth", authRoutes);
+app.use("/catalogo", validarJWT, crearCatalogoProxy(resolverInstancia));
+app.use("/pedidos", validarJWT, crearPedidosProxy(resolverInstancia));
 
 app.listen(3000, () => console.log("gateway en 3000"));
