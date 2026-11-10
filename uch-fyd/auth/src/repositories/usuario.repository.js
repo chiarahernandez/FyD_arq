@@ -1,12 +1,24 @@
 const Usuario = require("../models/usuario.model");
 
-async function activar(id) {
-  const resultado = await Usuario.updateOne(
-    { _id: id },
-    { $set: { activo: true } }
-  );
+const usuarioRepository = {
+  async findByEmail(email) {
+    return Usuario.findOne({ email });
+  },
 
-  return resultado.matchedCount > 0;
-}
+  async crear({ email, nombre, passwordHash }) {
+    const u = await Usuario.create({ email, nombre, passwordHash });
+    return u._id;
+  },
 
-module.exports = { activar };
+  async activar(id) {
+    const resultado = await Usuario.updateOne({ _id: id }, { $set: { activo: true } });
+    return resultado.matchedCount > 0;
+  },
+
+  async cambiarRol(id, rol) {
+    const resultado = await Usuario.updateOne({ _id: id }, { $set: { rol } });
+    return resultado.matchedCount > 0;
+  },
+};
+
+module.exports = usuarioRepository;

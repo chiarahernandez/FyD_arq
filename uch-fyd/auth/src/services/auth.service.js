@@ -1,3 +1,8 @@
+async function registrar({ email, nombre, password }, { repo, bcrypt }) {
+  const passwordHash = await bcrypt.hash(password, 10);
+  return repo.crear({ email, nombre, passwordHash });
+}
+
 async function login({ email, password }, { repo, bcrypt, jwt, jwtSecret }) {
   const u = await repo.findByEmail(email);
   if (!u || !(await bcrypt.compare(password, u.passwordHash))) {
@@ -6,8 +11,8 @@ async function login({ email, password }, { repo, bcrypt, jwt, jwtSecret }) {
   if (!u.activo) {
     return { status: 403, body: { error: "la cuenta todavía no fue activada" } };
   }
-  const token = jwt.sign({ sub: u._id, email }, jwtSecret, { expiresIn: "2h" });
+  const token = jwt.sign({ sub: u._id, email, nombre: u.nombre, rol: u.rol }, jwtSecret, { expiresIn: "2h" });
   return { status: 200, body: { token } };
 }
 
-module.exports = { login };
+module.exports = { registrar, login };

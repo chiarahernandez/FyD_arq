@@ -1,7 +1,7 @@
 
 function crearPedidosService({ repo, resolverInstancia, http }) {
   return {
-    async crearPedido({ usuarioId, articuloId, cantidad }) {
+    async crearPedido({ usuarioId, nombreCliente, articuloId, cantidad }) {
 
       // 1. Solicitar ejecución al Pool Java
       const urlPool = await resolverInstancia("pool");
@@ -58,6 +58,7 @@ function crearPedidosService({ repo, resolverInstancia, http }) {
       try {
         const pedidoId = await repo.crear({
           usuarioId,
+          nombreCliente,
           articuloId,
           cantidad,
           precioUnitario: precio,
@@ -82,6 +83,10 @@ function crearPedidosService({ repo, resolverInstancia, http }) {
 
         throw errInsert;
       }
+    },
+    async listarPedidos() {
+      const pedidos = await repo.listar();
+      return { status: 200, body: pedidos };
     }
   };
 }

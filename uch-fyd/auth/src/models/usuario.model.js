@@ -5,6 +5,7 @@ const Usuario = mongoose.model("Usuario", {
   nombre: { type: String },                                // PB-01: faltaba
   passwordHash: String,
   activo: { type: Boolean, default: false },                // antes: true (al revés de lo pedido)
+  rol: { type: String, enum: ["cliente", "admin"], default: "cliente" }, // NUEVO — Fase 1.11
 });
 
 module.exports = Usuario;

@@ -3,8 +3,11 @@ function crearPedidosController(service) {
   return {
     async crear(req, res, next) {
       try {
-        // 1. Obtener los datos enviados por el usuario
-        const { usuarioId, articuloId, cantidad } = req.body;
+        // 1. Obtener los datos: el usuarioId viene del Gateway (header,
+        // ya validado contra el JWT), el resto del body del cliente.
+        const usuarioId = req.headers["x-usuario-id"];
+        const nombreCliente = req.headers["x-usuario-nombre"] || "";
+        const { articuloId, cantidad } = req.body;
 
         // 2. Validar los datos recibidos
         if (
@@ -22,6 +25,7 @@ function crearPedidosController(service) {
         // 3. Llamar al Service para crear el pedido
         const resultado = await service.crearPedido({
           usuarioId,
+          nombreCliente,
           articuloId,
           cantidad
         });
@@ -31,6 +35,15 @@ function crearPedidosController(service) {
 
       } catch (error) {
         // 5. Enviar errores inesperados al middleware
+        next(error);
+      }
+    },
+
+    async listar(req, res, next) {
+      try {
+        const resultado = await service.listarPedidos();
+        return res.status(resultado.status).json(resultado.body);
+      } catch (error) {
         next(error);
       }
     }

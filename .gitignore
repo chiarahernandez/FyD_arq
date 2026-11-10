@@ -1,0 +1,12 @@
+# Variables de entorno
+.env
+.env.*
+
+# IDE
+.idea/
+
+# Dependencias de Node.js
+node_modules/
+
+# Archivos temporales
+*.log

@@ -6,6 +6,7 @@ function crearPedidosRoutes(controller) {
 
   // Endpoint para crear un pedido
   router.post("/pedidos", controller.crear);
+  router.get("/pedidos", controller.listar);
 
   return router;
 }

@@ -1,47 +1,38 @@
 const express = require("express");
-const mongoose = require("mongoose");
-const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const Consul = require("consul");
+const jwt = require("jsonwebtoken");
+const { conectar } = require("./config/db");
+const { registrarServicio } = require("./config/consul");
+const repo = require("./repositories/usuario.repository");
+const { crearAuthController } = require("./controllers/auth.controller");
+const { crearAuthRoutes } = require("./routes/auth.routes");
+const errorHandler = require("./middlewares/errorHandler");
 
 const app = express();
 app.use(express.json());
-mongoose.connect(process.env.MONGO_URL);
 
-const Usuario = mongoose.model("Usuario", {
-  email: String,
-  passwordHash: String,
-  activo: { type: Boolean, default: true },
-});
+async function iniciar() {
+  await conectar();
 
-app.post("/registro", async (req, res) => {
-  const { email, password } = req.body;
-  const passwordHash = await bcrypt.hash(password, 10);
-  const u = await Usuario.create({ email, passwordHash });
-  res.status(201).json({ id: u._id });
-});
-
-app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  const u = await Usuario.findOne({ email });
-  if (!u || !(await bcrypt.compare(password, u.passwordHash))) {
-    return res.status(401).json({ error: "credenciales inválidas" });
-  }
-  // JWT único = el mismo token sirve para Catálogo, Stock, Pedidos → SSO
-  const token = jwt.sign({ sub: u._id, email }, process.env.JWT_SECRET, { expiresIn: "2h" });
-  res.json({ token });
-});
-
-const PORT = 3001;
-app.listen(PORT, () => {
-  console.log(`auth escuchando en ${PORT}`);
-  const consul = new Consul({ host: process.env.CONSUL_HOST });
-  consul.agent.service.register({
-    name: "auth",
-    address: "auth",
-    port: PORT,
-    check: { http: `http://auth:${PORT}/health`, interval: "10s" },
+  const controller = crearAuthController({
+    repo,
+    bcrypt,
+    jwt,
+    jwtSecret: process.env.JWT_SECRET,
   });
-});
 
-app.get("/health", (_, res) => res.sendStatus(200));
+  app.use(crearAuthRoutes(controller));
+  app.get("/health", (_, res) => res.sendStatus(200));
+  app.use(errorHandler);
+
+  const PORT = 3001;
+  app.listen(PORT, () => {
+    console.log(`auth escuchando en ${PORT}`);
+    registrarServicio({ nombre: "auth", puerto: PORT });
+  });
+}
+
+iniciar().catch((error) => {
+  console.error("No se pudo iniciar Auth:", error.message);
+  process.exit(1);
+});

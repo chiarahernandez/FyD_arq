@@ -10,7 +10,17 @@ public class ConsulRegistration implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         String body = """
-          {"Name":"pool","Address":"pool","Port":3005}
+          {
+            "Name": "pool",
+            "Address": "pool",
+            "Port": 3005,
+            "Check": {
+              "HTTP": "http://pool:3005/health",
+              "Interval": "10s",
+              "Timeout": "5s",
+              "DeregisterCriticalServiceAfter": "30s"
+            }
+          }
         """;
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest req = HttpRequest.newBuilder()

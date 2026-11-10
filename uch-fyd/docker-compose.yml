@@ -42,9 +42,9 @@ services:
       RABBITMQ_URL: amqp://rabbitmq
       CONSUL_HOST: consul
     volumes:
-      - ./certs:/run/certs:ro   
+      - ./certs:/run/certs:ro
     depends_on:
-      rabbitmq: { condition: service_started }
+      rabbitmq: { condition: service_healthy }
       consul: { condition: service_started }
     ports: ["3002:3002"]
 
@@ -57,7 +57,7 @@ services:
     volumes:
       - ./certs:/run/certs:ro
     depends_on:
-      rabbitmq: { condition: service_started }
+      rabbitmq: { condition: service_healthy }
       consul: { condition: service_started }
     ports: ["3003:3003"]
 

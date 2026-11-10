@@ -51,6 +51,18 @@ async function iniciar() {
 
     console.log("Conexión a MySQL en Aiven verificada");
 
+    // Migración idempotente: agrega nombre_cliente si todavía no existe.
+    const [columnas] = await pool.query(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pedidos' AND COLUMN_NAME = 'nombre_cliente'`
+    );
+    if (columnas.length === 0) {
+      await pool.query(
+        "ALTER TABLE pedidos ADD COLUMN nombre_cliente VARCHAR(150) NOT NULL DEFAULT '' AFTER usuario_id"
+      );
+      console.log("Migración aplicada: columna nombre_cliente agregada a pedidos");
+    }
+
     // 2. Repository
     const repo = crearPedidoRepository(pool);
 
