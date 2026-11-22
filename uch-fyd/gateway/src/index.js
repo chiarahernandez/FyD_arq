@@ -121,6 +121,39 @@ app.use("/pedidos", validarJWT, async (req, res, next) => {
   }
 });
 
+// --- Blockchain: estado/verificación de un pedido y reintento manual (admin). ---
+// Se pasan id y rol del usuario: el servicio deja ver solo pedidos propios, salvo admin.
+function proxyBlockchain(req, res, next, target) {
+  createProxyMiddleware({
+    target,
+    changeOrigin: true,
+    on: {
+      proxyReq: (proxyReq) => {
+        proxyReq.setHeader("X-Usuario-Id", req.usuario.sub);
+        proxyReq.setHeader("X-Usuario-Rol", req.usuario.rol ?? "");
+      },
+    },
+  })(req, res, next);
+}
+
+app.get("/blockchain/pedidos/:id", validarJWT, async (req, res, next) => {
+  try {
+    proxyBlockchain(req, res, next, await resolverInstancia("blockchain"));
+  } catch (error) {
+    console.error("Error resolviendo blockchain:", error.message);
+    res.status(503).json({ error: "servicio blockchain no disponible" });
+  }
+});
+
+app.post("/blockchain/pedidos/:id/reintentar", validarJWT, requireAdmin, async (req, res, next) => {
+  try {
+    proxyBlockchain(req, res, next, await resolverInstancia("blockchain"));
+  } catch (error) {
+    console.error("Error resolviendo blockchain (reintentar):", error.message);
+    res.status(503).json({ error: "servicio blockchain no disponible" });
+  }
+});
+
 app.use("/catalogo", validarJWT, async (req, res, next) => {
   try {
     const target = await resolverInstancia("catalogo");

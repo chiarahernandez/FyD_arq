@@ -26,6 +26,14 @@ function crearPedidoRepository(pool) {
       return result.insertId;
     },
 
+    async obtenerPorId(pedidoId) {
+      const [rows] = await pool.query(
+        "SELECT * FROM pedidos WHERE id = ?",
+        [pedidoId]
+      );
+      return rows[0] ?? null;
+    },
+
     async listar() {
       const [rows] = await pool.query(
         "SELECT * FROM pedidos ORDER BY id DESC"

@@ -1,0 +1,19 @@
+{
+  "name": "uchfyd-contratos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Contrato RegistroPedidos + deploy (se corre una sola vez, fuera de Docker)",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:local": "hardhat run scripts/deploy.js",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "verify:sepolia": "hardhat verify --network sepolia",
+    "balance": "hardhat run scripts/balance.js --network sepolia"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.2",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.29.2"
+  }
+}

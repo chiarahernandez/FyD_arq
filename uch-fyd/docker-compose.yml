@@ -72,13 +72,36 @@ services:
     build: ./pedidos
     environment:
       <<: *aiven-env
+      RABBITMQ_URL: amqp://rabbitmq
       CONSUL_HOST: consul
     volumes:
       - ./certs:/run/certs:ro
     depends_on:
+      rabbitmq: { condition: service_healthy }
       consul: { condition: service_started }
       pool: { condition: service_started }
     ports: ["3004:3004"]
+
+  # Registra el hash de cada pedido en Sepolia. Las variables usan ":-" (no ":?")
+  # para que a quien no tenga las claves en su .env solo le falle este servicio
+  # y el resto del sistema levante igual.
+  blockchain:
+    build: ./blockchain
+    environment:
+      <<: *aiven-env
+      RABBITMQ_URL: amqp://rabbitmq
+      CONSUL_HOST: consul
+      RPC_URL: "${RPC_URL:-}"
+      PRIVATE_KEY: "${PRIVATE_KEY:-}"
+      CONTRACT_ADDRESS: "${CONTRACT_ADDRESS:-}"
+      ETHERSCAN_BASE_URL: https://sepolia.etherscan.io
+    volumes:
+      - ./certs:/run/certs:ro
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      consul: { condition: service_started }
+    restart: on-failure:5
+    ports: ["3006:3006"]
 
   gateway:
     build: ./gateway

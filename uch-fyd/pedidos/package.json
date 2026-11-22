@@ -6,6 +6,7 @@
     "start": "node src/index.js"
   },
   "dependencies": {
+    "amqplib": "^0.10.0",
     "axios": "^1.7.0",
     "consul": "^1.2.0",
     "express": "^4.19.0",

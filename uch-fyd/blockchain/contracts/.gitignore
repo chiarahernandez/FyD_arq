@@ -1,0 +1,7 @@
+artifacts/
+cache/
+typechain-types/
+coverage/
+coverage.json
+deployments/localhost.json
+deployments/hardhat.json

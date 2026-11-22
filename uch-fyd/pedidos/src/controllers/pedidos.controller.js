@@ -39,6 +39,19 @@ function crearPedidosController(service) {
       }
     },
 
+    async obtener(req, res, next) {
+      try {
+        const pedidoId = Number(req.params.id);
+        if (!Number.isInteger(pedidoId) || pedidoId <= 0) {
+          return res.status(400).json({ error: "id de pedido inválido" });
+        }
+        const resultado = await service.obtenerPedido(pedidoId);
+        return res.status(resultado.status).json(resultado.body);
+      } catch (error) {
+        next(error);
+      }
+    },
+
     async listar(req, res, next) {
       try {
         const resultado = await service.listarPedidos();

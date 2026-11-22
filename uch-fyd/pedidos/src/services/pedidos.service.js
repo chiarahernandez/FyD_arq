@@ -1,5 +1,7 @@
 
-function crearPedidosService({ repo, resolverInstancia, http }) {
+const SIN_EVENTOS = { publicarPedidoCreado: async () => {} };
+
+function crearPedidosService({ repo, resolverInstancia, http, eventos = SIN_EVENTOS }) {
   return {
     async crearPedido({ usuarioId, nombreCliente, articuloId, cantidad }) {
 
@@ -55,8 +57,9 @@ function crearPedidosService({ repo, resolverInstancia, http }) {
       );
 
       // 5. Guardar el pedido mediante el Repository
+      let pedidoId;
       try {
-        const pedidoId = await repo.crear({
+        pedidoId = await repo.crear({
           usuarioId,
           nombreCliente,
           articuloId,
@@ -64,15 +67,6 @@ function crearPedidosService({ repo, resolverInstancia, http }) {
           precioUnitario: precio,
           importeTotal
         });
-
-        return {
-          status: 201,
-          body: {
-            pedidoId,
-            precioUnitario: precio,
-            importeTotal
-          }
-        };
 
       } catch (errInsert) {
         // Compensación si falla el registro del pedido
@@ -83,6 +77,34 @@ function crearPedidosService({ repo, resolverInstancia, http }) {
 
         throw errInsert;
       }
+
+      // 6. Avisar que se creó el pedido (lo consume el servicio Blockchain).
+      // Va fuera del try: publicarPedidoCreado nunca lanza, y si fallara no
+      // tiene que disparar la compensación de stock de un pedido ya guardado.
+      await eventos.publicarPedidoCreado({
+        pedidoId,
+        usuarioId,
+        articuloId,
+        cantidad,
+        precioUnitario: precio,
+        importeTotal
+      });
+
+      return {
+        status: 201,
+        body: {
+          pedidoId,
+          precioUnitario: precio,
+          importeTotal
+        }
+      };
+    },
+    async obtenerPedido(pedidoId) {
+      const pedido = await repo.obtenerPorId(pedidoId);
+      if (!pedido) {
+        return { status: 404, body: { error: "pedido no encontrado" } };
+      }
+      return { status: 200, body: pedido };
     },
     async listarPedidos() {
       const pedidos = await repo.listar();

@@ -11,6 +11,7 @@ const { crearPedidoRepository } = require("./repositories/pedido.repository");
 const { crearPedidosService } = require("./services/pedidos.service");
 const { crearPedidosController } = require("./controllers/pedidos.controller");
 const { crearPedidosRoutes } = require("./routes/pedidos.routes");
+const { crearPublicadorEventos } = require("./services/pedidosEvents.service");
 
 // Manejo de errores
 const errorHandler = require("./middlewares/errorHandler");
@@ -66,23 +67,28 @@ async function iniciar() {
     // 2. Repository
     const repo = crearPedidoRepository(pool);
 
-    // 3. Service
+    // 3. Eventos (RabbitMQ, best effort: si falla, Pedidos sigue funcionando)
+    const eventos = crearPublicadorEventos();
+    await eventos.conectar();
+
+    // 4. Service
     const service = crearPedidosService({
       repo,
       resolverInstancia,
-      http: axios
+      http: axios,
+      eventos
     });
 
-    // 4. Controller
+    // 5. Controller
     const controller = crearPedidosController(service);
 
-    // 5. Routes
+    // 6. Routes
     app.use(crearPedidosRoutes(controller));
 
-    // 6. Middleware de errores
+    // 7. Middleware de errores
     app.use(errorHandler);
 
-    // 7. Iniciar servidor y registrar en Consul
+    // 8. Iniciar servidor y registrar en Consul
     app.listen(3004, () => {
       consul = registrarServicio({
         nombre: "pedidos",
